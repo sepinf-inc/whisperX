@@ -182,26 +182,36 @@ class FasterWhisperPipeline(Pipeline):
         return final_iterator
 
     def transcribe(
-        self, audio: Union[str, np.ndarray], batch_size=None, num_workers=0, language=None, task=None, chunk_size=30, print_progress = False, combined_progress=False
+        self, audios_path: list, batch_size=None, num_workers=0, language=None, task=None, chunk_size=30, print_progress = False, combined_progress=False
     ) -> TranscriptionResult:
-        if isinstance(audio, str):
-            audio = load_audio(audio)
+        
+        audios = []
+        for audio in audios_path:
+            audios.append(load_audio(audio))
 
-        def data(audio, segments):
+        def data(audios, segments):
             for seg in segments:
+                audio=audios[seg["audio"]]
                 f1 = int(seg['start'] * SAMPLE_RATE)
                 f2 = int(seg['end'] * SAMPLE_RATE)
                 # print(f2-f1)
                 yield {'inputs': audio[f1:f2]}
 
-        vad_segments = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
+        vad_segments=[]
+        
+        for i in range(len(audios)):
+            audio=audios[i]
+            vad_segments_temp = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
        
-        vad_segments = merge_chunks(
-            vad_segments,
-            chunk_size,
-            onset=self._vad_params["vad_onset"],
-            offset=self._vad_params["vad_offset"],
-        )
+            vad_segments_temp = merge_chunks(
+                vad_segments_temp,
+                chunk_size,
+                onset=self._vad_params["vad_onset"],
+                offset=self._vad_params["vad_offset"],
+            )
+            for segment in vad_segments_temp:
+                segment["audio"]=i
+                vad_segments.append(segment)
 
         print("segments",vad_segments,file=sys.stderr)
         
@@ -230,7 +240,7 @@ class FasterWhisperPipeline(Pipeline):
         segments: List[SingleSegment] = []
         batch_size = batch_size or self._batch_size
         total_segments = len(vad_segments)
-        for idx, out in enumerate(self.__call__(data(audio, vad_segments), batch_size=batch_size, num_workers=num_workers)):
+        for idx, out in enumerate(self.__call__(data(audios, vad_segments), batch_size=batch_size, num_workers=num_workers)):
             if print_progress:
                 base_progress = ((idx + 1) / total_segments) * 100
                 percent_complete = base_progress / 2 if combined_progress else base_progress
@@ -245,7 +255,8 @@ class FasterWhisperPipeline(Pipeline):
                     "text": text,
                     "avg_logprob": avg_logprob, # Include average log probabilities in the output
                     "start": round(vad_segments[idx]['start'], 3),
-                    "end": round(vad_segments[idx]['end'], 3)
+                    "end": round(vad_segments[idx]['end'], 3),
+                    "audio": vad_segments[idx]['audio']
                 }
             )
 
