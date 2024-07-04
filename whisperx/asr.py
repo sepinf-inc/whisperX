@@ -1,7 +1,7 @@
 import os
 import warnings
 from typing import List, Union, Optional, NamedTuple
-
+import sys
 import ctranslate2
 import faster_whisper
 import numpy as np
@@ -195,12 +195,16 @@ class FasterWhisperPipeline(Pipeline):
                 yield {'inputs': audio[f1:f2]}
 
         vad_segments = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
+       
         vad_segments = merge_chunks(
             vad_segments,
             chunk_size,
             onset=self._vad_params["vad_onset"],
             offset=self._vad_params["vad_offset"],
         )
+
+        print("segments",vad_segments,file=sys.stderr)
+        
         if self.tokenizer is None:
             language = language or self.detect_language(audio)
             task = task or "transcribe"
