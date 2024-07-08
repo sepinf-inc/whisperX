@@ -182,12 +182,12 @@ class FasterWhisperPipeline(Pipeline):
         return final_iterator
 
     def transcribe(
-        self, audios_path: list, batch_size=None, num_workers=0, language=None, task=None, chunk_size=30, print_progress = False, combined_progress=False
+        self, audios_path: list, batch_size=None, num_workers=0, language=None, task=None, chunk_size=30, print_progress = False, combined_progress=False,wav=False
     ) -> TranscriptionResult:
         
         audios = []
         for audio in audios_path:
-            audios.append(load_audio(audio))
+            audios.append(load_audio(audio,wav=wav))
 
         def data(audios, segments):
             for seg in segments:

@@ -20,9 +20,14 @@ N_FRAMES = exact_div(N_SAMPLES, HOP_LENGTH)  # 3000 frames in a mel spectrogram 
 N_SAMPLES_PER_TOKEN = HOP_LENGTH * 2  # the initial convolutions has stride 2
 FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
 TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
+import wave
 
-
-def load_audio(file: str, sr: int = SAMPLE_RATE):
+def load_audio(file: str, sr: int = SAMPLE_RATE,wav=False):
+    if wav:
+        ifile = wave.open(file)
+        samples = ifile.getnframes()
+        audio = ifile.readframes(samples)
+        return np.frombuffer(audio, np.int16).flatten().astype(np.float32) / 32768.0
     """
     Open an audio file and read as mono waveform, resampling as necessary
 
