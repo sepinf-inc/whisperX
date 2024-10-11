@@ -182,7 +182,7 @@ class FasterWhisperPipeline(Pipeline):
         return final_iterator
 
     def transcribe(
-        self, audios_path: list, batch_size=None, num_workers=0, language=None, task=None, chunk_size=30, print_progress = False, combined_progress=False,wav=False
+        self, audios_path: list, batch_size=None, num_workers=0, language=None, task=None, chunk_size=30, print_progress = False, combined_progress=False,wav=False,vad_segments=None
     ) -> TranscriptionResult:
         
         audios = []
@@ -196,22 +196,23 @@ class FasterWhisperPipeline(Pipeline):
                 f2 = int(seg['end'] * SAMPLE_RATE)
                 # print(f2-f1)
                 yield {'inputs': audio[f1:f2]}
-
-        vad_segments=[]
+        if vad_segments is None:
+            vad_segments=[]
+            
+            for i in range(len(audios)):
+                audio=audios[i]
+                vad_segments_temp = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
         
-        for i in range(len(audios)):
-            audio=audios[i]
-            vad_segments_temp = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
-       
-            vad_segments_temp = merge_chunks(
-                vad_segments_temp,
-                chunk_size,
-                onset=self._vad_params["vad_onset"],
-                offset=self._vad_params["vad_offset"],
-            )
-            for segment in vad_segments_temp:
-                segment["audio"]=i
-                vad_segments.append(segment)
+                vad_segments_temp = merge_chunks(
+                    vad_segments_temp,
+                    chunk_size,
+                    onset=self._vad_params["vad_onset"],
+                    offset=self._vad_params["vad_offset"],
+                )
+                for segment in vad_segments_temp:
+                    segment["audio"]=i
+                    vad_segments.append(segment)
+        
 
         print("segments",vad_segments,file=sys.stderr)
         
