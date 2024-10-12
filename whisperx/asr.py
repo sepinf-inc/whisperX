@@ -197,24 +197,24 @@ class FasterWhisperPipeline(Pipeline):
                 # print(f2-f1)
                 yield {'inputs': audio[f1:f2]}
         vad_segments=[]
-        if vad_segments_per_file is None:      
-            for i in range(len(audios)):
-                if vad_segments_per_file is None or vad_segments_per_file[i] is None:
-                    audio=audios[i]
-                    vad_segments_temp = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
-            
-                    vad_segments_temp = merge_chunks(
-                        vad_segments_temp,
-                        chunk_size,
-                        onset=self._vad_params["vad_onset"],
-                        offset=self._vad_params["vad_offset"],
-                    )
-                    for segment in vad_segments_temp:
-                        segment["audio"]=i
-                        vad_segments.append(segment)
-                else:
-                    for segment in vad_segments_per_file[i]:
-                        vad_segments.append(segment)
+              
+        for i in range(len(audios)):
+            if vad_segments_per_file is None or vad_segments_per_file[i] is None:
+                audio=audios[i]
+                vad_segments_temp = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
+        
+                vad_segments_temp = merge_chunks(
+                    vad_segments_temp,
+                    chunk_size,
+                    onset=self._vad_params["vad_onset"],
+                    offset=self._vad_params["vad_offset"],
+                )
+                for segment in vad_segments_temp:
+                    segment["audio"]=i
+                    vad_segments.append(segment)
+            else:
+                for segment in vad_segments_per_file[i]:
+                    vad_segments.append(segment)
 
         
 
