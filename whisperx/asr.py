@@ -214,11 +214,12 @@ class FasterWhisperPipeline(Pipeline):
                     vad_segments.append(segment)
             else:
                 for segment in vad_segments_per_file[i]:
+                    print("segment[audio]=",segment["audio"])
                     vad_segments.append(segment)
 
         
 
-        print("segments",vad_segments,file=sys.stderr)
+        print("segments_1",vad_segments,file=sys.stderr)
         
         if self.tokenizer is None:
             language = language or self.detect_language(audio)
