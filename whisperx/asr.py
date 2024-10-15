@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from transformers import Pipeline
 from transformers.pipelines.pt_utils import PipelineIterator
+from concurrent.futures import ThreadPoolExecutor
 
 from .audio import N_SAMPLES, SAMPLE_RATE, load_audio, log_mel_spectrogram
 from .vad import load_vad_model, merge_chunks
