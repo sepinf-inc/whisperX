@@ -13,6 +13,28 @@ from .audio import N_SAMPLES, SAMPLE_RATE, load_audio, log_mel_spectrogram
 from .vad import load_vad_model, merge_chunks
 from .types import TranscriptionResult, SingleSegment
 
+NUM_THREADS = 4
+
+# Função para ser executada em cada thread
+def process_audio(i, audio, vad_model, SAMPLE_RATE, chunk_size, vad_params):
+    vad_segments = vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
+    vad_segments = merge_chunks(vad_segments, chunk_size, onset=vad_params["vad_onset"], offset=vad_params["vad_offset"])
+    return i, vad_segments
+
+def process_audios_in_parallel(audios, vad_model, SAMPLE_RATE, chunk_size, vad_params):
+    vad_segments_temp_i = [None] * len(audios)
+    
+    # Usar ThreadPoolExecutor para processar os áudios em paralelo
+    with ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
+        futures = [executor.submit(process_audio, i, audios[i], vad_model, SAMPLE_RATE, chunk_size, vad_params) for i in range(len(audios))]
+        
+        for future in futures:
+            i, result = future.result()  # Obtém o resultado da thread
+            vad_segments_temp_i[i] = result
+
+    return vad_segments_temp_i
+
+
 def find_numeral_symbol_tokens(tokenizer):
     numeral_symbol_tokens = []
     for i in range(tokenizer.eot):
@@ -198,18 +220,10 @@ class FasterWhisperPipeline(Pipeline):
                 yield {'inputs': audio[f1:f2]}
 
         vad_segments=[]
-        
+        vad_segments_temp_i=process_audios_in_parallel(audios,self.vad_model,SAMPLE_RATE,chunk_size,self._vad_params)
+            
         for i in range(len(audios)):
-            audio=audios[i]
-            vad_segments_temp = self.vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
-       
-            vad_segments_temp = merge_chunks(
-                vad_segments_temp,
-                chunk_size,
-                onset=self._vad_params["vad_onset"],
-                offset=self._vad_params["vad_offset"],
-            )
-            for segment in vad_segments_temp:
+            for segment in vad_segments_temp_i[i]:
                 segment["audio"]=i
                 vad_segments.append(segment)
 
