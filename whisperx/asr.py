@@ -14,11 +14,11 @@ from .audio import N_SAMPLES, SAMPLE_RATE, load_audio, log_mel_spectrogram
 from .vad import load_vad_model, merge_chunks
 from .types import TranscriptionResult, SingleSegment
 
-NUM_THREADS = 4
+NUM_THREADS = 8
 
 # Função para ser executada em cada thread
 def process_audio(i, audio, vad_model, SAMPLE_RATE, chunk_size, vad_params):
-    vad_segments = vad_model({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
+    vad_segments = vad_model[i]({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
     vad_segments = merge_chunks(vad_segments, chunk_size, onset=vad_params["vad_onset"], offset=vad_params["vad_offset"])
     return i, vad_segments
 
@@ -389,6 +389,9 @@ def load_model(whisper_arch,
         vad_model = vad_model
     else:
         vad_model = load_vad_model(torch.device(device), use_auth_token=None, **default_vad_options)
+        vad_model = []
+        for i in range(NUM_THREADS):
+            vad_model[i]= load_vad_model(torch.device(device), use_auth_token=None, **default_vad_options)
 
     return FasterWhisperPipeline(
         model=model,
