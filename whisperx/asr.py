@@ -18,7 +18,7 @@ NUM_THREADS = 8
 
 # Função para ser executada em cada thread
 def process_audio(i, audio, vad_model, SAMPLE_RATE, chunk_size, vad_params):
-    vad_segments = vad_model[i]({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
+    vad_segments = vad_model[i%len(vad_model)]({"waveform": torch.from_numpy(audio).unsqueeze(0), "sample_rate": SAMPLE_RATE})
     vad_segments = merge_chunks(vad_segments, chunk_size, onset=vad_params["vad_onset"], offset=vad_params["vad_offset"])
     return i, vad_segments
 
