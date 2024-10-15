@@ -391,7 +391,7 @@ def load_model(whisper_arch,
         vad_model = load_vad_model(torch.device(device), use_auth_token=None, **default_vad_options)
         vad_model = []
         for i in range(NUM_THREADS):
-            vad_model[i]= load_vad_model(torch.device(device), use_auth_token=None, **default_vad_options)
+            vad_model.append(load_vad_model(torch.device(device), use_auth_token=None, **default_vad_options))
 
     return FasterWhisperPipeline(
         model=model,
